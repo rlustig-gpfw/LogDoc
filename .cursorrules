@@ -1,0 +1,106 @@
+# .cursorrules
+# Project: LogDoc - Agentic SOC Triage for Zeek Telemetry (MVP)
+# Goal: Build an LLM-powered agent that reviews Zeek-style logs and produces SOC-style triage and response.
+# Architecture:
+#   Zeek logs → LLM classification → MITRE technique / analysis → RAG lookup → SOC-style response
+
+################################################################################
+# 0) North Star (MVP Intent)
+################################################################################
+- Build a practical SOC-style triage agent for Zeek network telemetry.
+- Primary user: Security analyst / SOC analyst.
+- MVP capabilities:
+  - Read Zeek-style logs or short log slices.
+  - Classify activity (e.g., benign vs attack category).
+  - Map activity to MITRE ATT&CK techniques.
+  - Retrieve relevant runbooks/playbooks via RAG.
+  - Produce a concise SOC-style triage + recommended response.
+
+################################################################################
+# 1) Core Architecture (Keep Simple)
+################################################################################
+Pipeline (conceptual, not prescriptive):
+- Ingest Zeek-style logs or preprocessed summaries
+- LLM-based classification & analysis
+- MITRE ATT&CK technique identification
+- RAG lookup for playbooks / runbooks / documentation
+- SOC-style response generation (what happened, why it matters, what to do)
+
+The implementation can evolve. Favor working end-to-end flow over perfect modularity.
+
+################################################################################
+# 2) Main Project Tasks & Primary Goals (Reference Checklist)
+################################################################################
+Task 1 – Problem, Audience, Scope  
+Goal:
+- Clearly define the SOC problem being solved and who the user is.
+- Make sure the system answers real analyst questions.
+
+Task 2 – Proposed Solution & UX  
+Goal:
+- Define how the user interacts with the system.
+- Describe the high-level architecture and major components (LLM, RAG, tools).
+- Clarify what the agent does vs what retrieval provides.
+
+Task 3 – Data & Knowledge Sources  
+Goal:
+- Decide what Zeek-style data the system consumes.
+- Decide what external or internal knowledge sources are used for RAG.
+- Ensure the agent can reason over telemetry and enrich with context.
+
+Task 4 – End-to-End Prototype  
+Goal:
+- Build a working, local end-to-end system.
+- User can submit Zeek-style logs and receive SOC-style triage output.
+
+Task 5 – Evaluation (Baseline)  
+Goal:
+- Create a small, clean test set (golden dataset).
+- Measure how well the system classifies and explains incidents.
+- Establish a baseline using RAGAS or similar metrics.
+
+Task 6 – Improvement Loop  
+Goal:
+- Improve retrieval or reasoning quality.
+- Compare against baseline and document improvements.
+
+Task 7 – Next Steps / Demo Day Decision  
+Goal:
+- Decide what version of the system is “good enough” to demo.
+- Reflect on architectural tradeoffs and future directions.
+
+################################################################################
+# 3) Prompting Rules (Keep Prompts Disciplined)
+################################################################################
+- All prompts should:
+  - Explicitly describe the SOC analyst role and triage objective.
+  - Require structured outputs (e.g., JSON with fields like: classification, mitre_technique, rationale, recommended_actions).
+  - Encourage evidence-based reasoning grounded in the provided telemetry.
+  - Avoid speculation when data is insufficient (model should say “unknown” or “insufficient evidence”).
+
+- Prompts should be:
+  - Centralized (not scattered inline across the codebase).
+  - Versioned or named so changes can be evaluated over time.
+
+################################################################################
+# 4) Engineering Principles (Lightweight)
+################################################################################
+- Favor:
+  - End-to-end working flow over premature optimization.
+  - Clarity over clever abstractions.
+  - Simple baselines before advanced techniques.
+- Any new capability should answer:
+  - “Does this improve SOC-style triage quality for Zeek telemetry?”
+
+################################################################################
+# 5) Scope Guardrails
+################################################################################
+- This project is about:
+  - SOC triage and response from Zeek-style telemetry.
+- This project is NOT (for MVP):
+  - A full SIEM replacement
+  - Real-time production SOC automation
+  - Perfect detection accuracy
+
+# End of .cursorrules
+
