@@ -85,6 +85,4 @@ class LogDocAgent:
 
         graph = graph_builder.compile()
         return graph
-
-
     
