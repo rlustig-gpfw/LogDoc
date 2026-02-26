@@ -137,11 +137,12 @@ if __name__ == "__main__":
         #     "https://docs.lumu.io/portal/en/kb/articles/network-bruteforce-ir-playbook",
         # ],
         pdf_paths=[
-            "data/Federal_Government_Cybersecurity_Incident_and_Vulnerability_Response_Playbooks_508C.pdf",
-            "data/NIST.SP.800-61r2.pdf",
-            "data/network-scan-response-playbook.pdf",
-            "data/network-bruteforce-ir-playbook.pdf",
+            "data/kb/Federal_Government_Cybersecurity_Incident_and_Vulnerability_Response_Playbooks_508C.pdf",
+            "data/kb/NIST.SP.800-61r2.pdf",
+            "data/kb/network-scan-response-playbook.pdf",
+            "data/kb/network-bruteforce-ir-playbook.pdf",
         ],
     )
-    save_documents(docs, "playbooks.json")
-    print(f"Saved {len(docs)} documents to playbooks.json")
+    output_path = "data/playbooks.json"
+    save_documents(docs, output_path)
+    print(f"Saved {len(docs)} documents to {output_path}")

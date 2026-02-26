@@ -94,7 +94,7 @@ def get_naive_retriever_chain():
     global _naive_retrieval_chain
 
     if _naive_retrieval_chain is None:
-        docs = load_documents("../playbooks.json")
+        docs = load_documents("../data/playbooks.json")
 
         naive_retriever = _create_naive_retriever(docs, 3)
 
