@@ -31,6 +31,7 @@ Provide:
 - a brief summary
 - recommended actions (clear, actionable steps)
 - any relevant playbook/runbook guidance from the context
+- citations to the information sources used to answer the question
 
 Answer:
 """
@@ -78,6 +79,7 @@ def _create_naive_retriever(docs: list[Document], k: int = 3):
             embedding=config.get_embedding_model(),
         )
         _naive_vector_store.add_documents(documents)
+        print(f"Added {len(documents)} documents to the vector store")
 
     return _naive_vector_store.as_retriever(search_kwargs={"k": k})
 
@@ -94,7 +96,13 @@ def get_naive_retriever_chain():
     global _naive_retrieval_chain
 
     if _naive_retrieval_chain is None:
-        docs = load_documents("../data/playbooks.json")
+
+        #docs = load_documents("../../data/playbooks.json")
+        import os
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        playbooks_path = os.path.join(project_root, "data", "playbooks.json")
+        print(f"Loading playbooks from {playbooks_path}")
+        docs = load_documents(playbooks_path)
 
         naive_retriever = _create_naive_retriever(docs, 3)
 
