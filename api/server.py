@@ -1,6 +1,7 @@
 """FastAPI backend server for LogDoc SOC Triage Agent."""
 
 import json
+from pathlib import Path
 import sys
 import os
 
@@ -31,6 +32,12 @@ TOOL_STATUS_MAP = {
     "search_web": "Searching the web...",
 }
 
+from dotenv import load_dotenv
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+print(f"Loading .env file from {ROOT_DIR / '.env'}")
+did_load = load_dotenv(ROOT_DIR / ".env", override=True)
+
 
 class Message(BaseModel):
     role: str  # "user" or "assistant"
@@ -50,7 +57,9 @@ async def health():
 async def chat_endpoint(request: ChatRequest):
     """Stream chat responses from the LogDoc agent via Server-Sent Events."""
     agent = get_logdoc_agent()
-    graph = agent.agent  # CompiledStateGraph from LangGraph
+    graph = agent.graph
+
+    print(f"Agent model: {agent.llm.model_name}")
 
     lc_messages = []
     for msg in request.messages:
@@ -58,6 +67,9 @@ async def chat_endpoint(request: ChatRequest):
             lc_messages.append(HumanMessage(content=msg.content))
         elif msg.role == "assistant":
             lc_messages.append(AIMessage(content=msg.content))
+
+    # Run IDs for runs that are inside a tool (e.g. RAG retriever's LLM). We skip streaming their tokens.
+    tool_descendant_run_ids = set()
 
     async def generate():
         try:
@@ -67,8 +79,15 @@ async def chat_endpoint(request: ChatRequest):
                 version="v2",
             ):
                 kind = event["event"]
+                run_id = event.get("run_id")
+                parent_ids = event.get("parent_ids") or []
+
+                # Mark this run and all descendants of tool runs so we don't stream their LLM output
+                if any(pid in tool_descendant_run_ids for pid in parent_ids):
+                    tool_descendant_run_ids.add(run_id)
 
                 if kind == "on_tool_start":
+                    tool_descendant_run_ids.add(run_id)
                     tool_name = event.get("name", "")
                     status = TOOL_STATUS_MAP.get(tool_name, f"Using {tool_name}...")
                     yield f"data: {json.dumps({'type': 'status', 'content': status})}\n\n"
@@ -77,6 +96,9 @@ async def chat_endpoint(request: ChatRequest):
                     yield f"data: {json.dumps({'type': 'status', 'content': ''})}\n\n"
 
                 elif kind == "on_chat_model_stream":
+                    # Only stream tokens from the main agent's LLM, not from tool-internal LLMs (e.g. RAG)
+                    if run_id in tool_descendant_run_ids:
+                        continue
                     chunk = event["data"]["chunk"]
                     content = chunk.content
                     if isinstance(content, str) and content:
