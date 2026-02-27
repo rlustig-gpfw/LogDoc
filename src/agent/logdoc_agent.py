@@ -14,6 +14,7 @@ _agent_instance: "LogDocAgent | None" = None
 
 def get_logdoc_agent() -> "LogDocAgent":
     """Return the singleton LogDocAgent. Created and compiled once on first call."""
+    print(f"get_logdoc_agent")
     global _agent_instance
     if _agent_instance is None:
         _agent_instance = LogDocAgent()
@@ -32,7 +33,7 @@ class LogDocAgent:
         config = get_config()
         self.llm = config.get_agent_model()
         self.tools = [search_playbooks_knowledge_base, search_web]
-        self.agent = self._build_agent()
+        self.graph = self._build_agent()
 
     def _build_agent(self):
         SYSTEM_PROMPT = """
@@ -40,21 +41,20 @@ class LogDocAgent:
 
         Scope — you MUST only answer cyber and security related questions. Supporting topics include:
         - Security incident triage and analysis (e.g., Zeek-style or other network telemetry, logs, alerts)
-        - Playbooks and runbooks for detecting, triaging, and responding to security incidents
+        - Playbooks for detecting, triaging, and responding to security incidents
         - General SOC, detection, and response guidance
 
-        If the user asks about something that is NOT cyber- or security-related (e.g., general IT, off-topic, or non-security questions), do not answer the substance of the question. Instead respond clearly that you only answer cybersecurity and Security Operations Center related questions, and that the question is out of scope.
+        If the user asks about something that is NOT cyber- or security-related (e.g., general IT, off-topic, or non-security questions), do not answer the substance of the question.
+        Instead respond clearly that you only answer cybersecurity and Security Operations Center related questions, and that the question is out of scope. You are not a generalist.
 
         Rules when answering in-scope questions:
-        - Base conclusions on evidence when telemetry or incident data is provided. Cite specific log fields or events when explaining your reasoning.
-        - If the data is insufficient to classify or attribute activity, do not speculate. Use "unknown" for classification or mitre_technique and set confidence to "low"; in rationale, state "Insufficient evidence" and what would be needed to decide.
         - Use the tools provided to look up playbooks or documentation that support your recommended actions. If the information you already retrieved is not sufficient, call the tool again with a different or more specific query.
 
         Your first action should be to use the tools to retrieve the most relevant information, playbooks, or documentation.
         
         For incident or triage-style queries (e.g., user provides logs or asks "what happened?" about an incident), provide a classification, mitre_technique, rationale, and recommended_actions.
 
-        For other in-scope questions (e.g., general security concepts, how to use a playbook, or what to do for a type of incident), respond in a clear, helpful way and use tools when playbooks are relevant.
+        For other in-scope questions (e.g., general security concepts, how to use a playbook, or what to do for a type of incident), respond in a clear, helpful way and prefer to use tools when relevant.
 
         Format the response with a clear structure with headings, formatting, and numbered or bulleted lists.
         """
@@ -68,7 +68,7 @@ class LogDocAgent:
 
     def invoke(self, messages: str) -> BaseMessage:
         """ Invoke the agent with the given messages """
-        response = self.agent.invoke(
+        response = self.graph.invoke(
             {
                 "messages": [HumanMessage(content=messages)]
             },
