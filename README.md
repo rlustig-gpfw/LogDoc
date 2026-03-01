@@ -1,6 +1,6 @@
 # LogDoc
 
-**[▶ Demo video](YOUR_VIDEO_URL)**
+**[▶ Demo video](https://www.loom.com/share/b0930e542d61494e9477b20f91223c04)**
 
 ## Problem, Audience, and Scope
 
@@ -56,9 +56,9 @@ LogDoc targets that gap: one place where an analyst can ask SOC questions, submi
 | **Tool(s)** | RAG for playbooks (retriever chain), Tavily web search | Playbook knowledge base tool grounds answers in docs; web search covers recent threats and docs not yet in the knowledge base. |
 | **Embedding model** | OpenAI `text-embedding-3-small` | Same vendor as the LLM, keeps consistency with good quality for semantic search over playbooks |
 | **Vector database** | Qdrant (in-memory for MVP; persistent option later) | Simple API and LangChain integration for indexing and retrieving playbook chunks |
-| **Monitoring tool** | Not yet implemented; LangSmith planned for future iterations | LangSmith tracing and debugging tools are used in industry and work well. |
+| **Monitoring tool** | LangSmith | LangSmith tracing and debugging tools are used in industry and work well |
 | **Evaluation framework** | RAGAS (Context Precision/Recall, Faithfulness, Response Relevancy, Noise Sensitivity) | Designed for RAG pipelines and gives repeatable metrics to compare across agent/prompt/RAG changes |
-| **User interface** | React (Vite, TypeScript, Tailwind) + FastAPI backend with SSE streaming | Chat-first UX fits analyst workflows; FastAPI + SSE keeps streaming simple |
+| **User interface** | React (Vite, TypeScript, Tailwind) + FastAPI backend with streaming | Chat-first UX fits analyst workflows |
 | **Deployment tool** | Local only | Simple to test and manange. Future demos will determine the right API and environment to run in. |
 | **Other components** | QdrantVectorStore, RAGAS test-set generation (SDG) | Qdrant provides high-performance and flexible controls; SDG + RAGAS gives synthetic Q&A pairs to evaluate retrieval and response quality. |
 
