@@ -15,9 +15,10 @@ from langchain_cohere import CohereRerank
 from src.utils.config import get_config
 from src.utils.dataset_utils import load_documents
 
+
 _naive_retrieval_chain = None
 _contextual_compression_retrieval_chain = None
-_parent_child_retrieval_chain = None
+_parent_document_retrieval_chain = None
 
 RAG_PROMPT = """
 You are a SOC analyst. Use the retrieved CONTEXT to help answer the QUESTION.
@@ -42,25 +43,37 @@ Provide:
 Answer:
 """
 
-def _format_docs(docs: list[Document]) -> str:
-    """Format retrieved documents as a single context string for the RAG prompt."""
-    return "\n\n".join(doc.page_content for doc in docs)
-
-
-def _docs_to_context(d: dict) -> dict:
-    """Replace raw retrieved documents with a formatted context string for the prompt."""
-    return {**d, "context": _format_docs(d["context"])}
-
-
 def _question_input(x: str | dict) -> dict:
     """Normalize input so the chain can be invoked with a bare question string or a dict."""
     if isinstance(x, str):
         return {"question": x}
     return x
 
+def _load_playbooks() -> list[Document]:
+    """
+    Load the playbooks from the data directory.
+    Tries to load various paths in the data directory, which depends on the current working directory.
+    """
+    potential_playbook_paths = [
+        "data/playbooks.json",
+        "../data/playbooks.json",
+        "../../data/playbooks.json",
+    ]
+    for playbook_path in potential_playbook_paths:
+        try:
+            docs = load_documents(playbook_path)
+            print(f"Loaded {len(docs)} playbooks from {playbook_path}")
+            return docs
+        except FileNotFoundError:
+            continue
+
+    print(f"No playbooks found in {potential_playbook_paths}")
+    raise FileNotFoundError(f"No playbooks found in {potential_playbook_paths}") from None
 
 def _create_naive_retriever(docs: list[Document], k: int = 3):
-
+    """
+    Create a naive retriever over the given documents.
+    """
     config = get_config()
 
     text_splitter = RecursiveCharacterTextSplitter(
@@ -100,12 +113,7 @@ def get_naive_retriever_chain():
 
     if _naive_retrieval_chain is None:
 
-        #docs = load_documents("../../data/playbooks.json")
-        import os
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        playbooks_path = os.path.join(project_root, "data", "playbooks4.json")
-        print(f"Loading playbooks from {playbooks_path}")
-        docs = load_documents(playbooks_path)
+        docs = _load_playbooks()
 
         naive_retriever = _create_naive_retriever(docs, 3)
 
@@ -145,11 +153,7 @@ def get_contextual_compression_retriever_chain():
 
     if _contextual_compression_retrieval_chain is None:
 
-        import os
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        playbooks_path = os.path.join(project_root, "data", "playbooks4.json")
-        print(f"Loading playbooks from {playbooks_path}")
-        docs = load_documents(playbooks_path)
+        docs = _load_playbooks()
 
         contextual_compression_retriever = _create_contextual_compression_retriever(docs, 10)
 
@@ -167,7 +171,7 @@ def get_contextual_compression_retriever_chain():
     return _contextual_compression_retrieval_chain
 
 
-def _create_parent_child_retriever(docs: list[Document]):
+def _create_parent_document_retriever(docs: list[Document]):
     """Create a parent-child retriever over the given docs."""
 
     parent_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=400)
@@ -185,46 +189,42 @@ def _create_parent_child_retriever(docs: list[Document]):
     )
 
     store = InMemoryStore()
-    parent_child_retriever = ParentDocumentRetriever(
+    parent_document_retriever = ParentDocumentRetriever(
         vectorstore=parent_document_vectorstore,
         docstore=store,
         parent_splitter=parent_splitter,
         child_splitter=child_splitter,
     )
 
-    parent_child_retriever.add_documents(docs)
+    parent_document_retriever.add_documents(docs)
     
-    return parent_child_retriever
+    return parent_document_retriever
 
-def get_parent_child_retriever_chain():
-    """Build and return a parent-child retriever over the given docs. Client and vector store are created once and reused.
+def get_parent_document_retriever_chain():
+    """Build and return a parent-document retriever over the given docs. Client and vector store are created once and reused.
 
     Call with no arguments. Invoke the returned chain with a question string or a dict:
-        chain = get_parent_child_retriever_chain()
+        chain = get_parent_document_retriever_chain()
         result = chain.invoke("What should I do about a network scan?")
         # or
         result = chain.invoke({"question": "What should I do about a network scan?"})
     """
-    global _parent_child_retrieval_chain
+    global _parent_document_retrieval_chain
 
-    if _parent_child_retrieval_chain is None:
+    if _parent_document_retrieval_chain is None:
 
-        import os
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-        playbooks_path = os.path.join(project_root, "data", "playbooks4.json")
-        print(f"Loading playbooks from {playbooks_path}")
-        docs = load_documents(playbooks_path)
+        docs = _load_playbooks()
 
-        parent_child_retriever = _create_parent_child_retriever(docs)
+        parent_document_retriever = _create_parent_document_retriever(docs)
 
         rag_prompt = ChatPromptTemplate.from_template(RAG_PROMPT)
         chat_model = get_config().get_rag_model()
 
         core_chain = (
-            {"context": itemgetter("question") | parent_child_retriever, "question": itemgetter("question")}
+            {"context": itemgetter("question") | parent_document_retriever, "question": itemgetter("question")}
             | RunnablePassthrough.assign(context=itemgetter("context"))
             | {"response": rag_prompt | chat_model, "context": itemgetter("context")}
         )
-        _parent_child_retrieval_chain = RunnableLambda(_question_input) | core_chain
+        _parent_document_retrieval_chain = RunnableLambda(_question_input) | core_chain
 
-    return _parent_child_retrieval_chain
+    return _parent_document_retrieval_chain

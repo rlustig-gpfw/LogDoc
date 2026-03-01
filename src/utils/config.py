@@ -5,10 +5,8 @@ including API keys, embedding model, LLM models, and the Qdrant vector store/ret
 
 import os
 
-#from dotenv import load_dotenv
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from qdrant_client import QdrantClient
 
 
 _config = None
@@ -23,10 +21,14 @@ def get_config() -> "Config":
 class OpenAIModels:
     """OpenAI model ids used across the project."""
 
-    agent: str = "gpt-4.1"           # Main triage agent
-    rag: str = "gpt-4.1-mini"             # RAG retrieval - need a more powerful model to retrieve the relevant documents
-    sdg: str = "gpt-4.1-mini"             # Synthetic data generation
-    evaluator: str = "gpt-4.1"       # Ragas evaluation - need a more powerful model to evaluate the SDG data
+    # Main triage agent
+    agent: str = "gpt-4.1"
+    # RAG retrieval - need a more powerful model to retrieve the relevant documents
+    rag: str = "gpt-4.1-mini"
+    # Synthetic data generation
+    sdg: str = "gpt-4.1-mini"
+    # Ragas evaluation - need a more powerful model     
+    evaluator: str = "gpt-4.1"
 
 
 class Config:
@@ -53,6 +55,7 @@ class Config:
 
     def get_sdg_model(self) -> ChatOpenAI:
         if self._sdg_model is None:
+            # Rate limit the SDG model to 2 requests per second
             rate_limiter = InMemoryRateLimiter(
                 requests_per_second=2, check_every_n_seconds=0.1, max_bucket_size=1
             )
@@ -71,6 +74,7 @@ class Config:
 
     def get_evaluator_model(self) -> ChatOpenAI:
         if self._evaluator_model is None:
+            # Rate limit the evaluator model to 2 requests per second
             rate_limiter = InMemoryRateLimiter(
                 requests_per_second=2, check_every_n_seconds=0.1, max_bucket_size=1
             )
@@ -79,4 +83,3 @@ class Config:
                 rate_limiter=rate_limiter,
             )
         return self._evaluator_model
-

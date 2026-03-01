@@ -1,5 +1,4 @@
 import time
-from langchain_openai import ChatOpenAI
 from typing import Dict, Iterable, List
 import pandas as pd
 from langchain_core.runnables import Runnable
@@ -41,7 +40,6 @@ def run_ragas_evaluation(retriever_chain: Runnable, chain_name: str, dataset: Te
 
         resp = out["response"]
         response_text = resp.content if hasattr(resp, "content") else resp.get("content", "")
-        # retrieved_contexts = [out["context"]]
         retrieved_contexts = [c.page_content for c in out["context"]]
 
         # Token usage (assuming OpenAI metadata)
@@ -91,7 +89,7 @@ def run_ragas_evaluation(retriever_chain: Runnable, chain_name: str, dataset: Te
 def _filter_result_metrics(result: EvaluationResult, keep_metrics: Iterable):
     df = result.to_pandas()
 
-    # Coerce numeric columns
+    # Replace non-numeric values with NaN
     df_num = df.apply(pd.to_numeric, errors="coerce")
 
     out = {}
