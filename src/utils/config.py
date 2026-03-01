@@ -23,7 +23,7 @@ def get_config() -> "Config":
 class OpenAIModels:
     """OpenAI model ids used across the project."""
 
-    agent: str = "gpt-4.1-mini"           # Main triage agent
+    agent: str = "gpt-4.1"           # Main triage agent
     rag: str = "gpt-4.1-mini"             # RAG retrieval - need a more powerful model to retrieve the relevant documents
     sdg: str = "gpt-4.1-mini"             # Synthetic data generation
     evaluator: str = "gpt-4.1"       # Ragas evaluation - need a more powerful model to evaluate the SDG data
