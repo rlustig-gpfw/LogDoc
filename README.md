@@ -1,5 +1,7 @@
 # LogDoc
 
+**[▶ Demo video](YOUR_VIDEO_URL)**
+
 ## Problem, Audience, and Scope
 
 **Problem** - Security Operations Center (SOC) analysts need to quickly triage network telemetry, map activity to threats, and get evidence-based next steps from playbooks yet today this requires manual correlation, knowing where to look, and is slow and inconsistent.
