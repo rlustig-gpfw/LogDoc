@@ -4,46 +4,13 @@ and to save/load them as LangChain Documents.
 """
 
 import json
+import re
+import unicodedata
 from pathlib import Path
 
 import pymupdf4llm
-
+from langchain_community.document_loaders import WebBaseLoader
 from langchain_core.documents import Document
-from langchain_community.document_loaders import WebBaseLoader, PyPDFLoader
-
-
-import re
-import unicodedata
-
-# def clean_extracted_text(text: str) -> str:
-#     if not text:
-#         return ""
-
-#     # Remove ASCII control chars except: \n \r \t
-#     CONTROL_CHARS = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
-
-#     # Remove common zero-width / directional markers
-#     ZERO_WIDTH = re.compile(r"[\u200B-\u200F\u202A-\u202E\u2060\uFEFF]")
-
-#     MULTI_SPACE = re.compile(r"[ \t]{2,}")
-#     MULTI_NEWLINE = re.compile(r"\n{3,}")
-
-#     text = unicodedata.normalize("NFKC", text)
-#     text = text.replace("\r\n", "\n").replace("\r", "\n")
-#     text = CONTROL_CHARS.sub("", text)     # ✅ fixes your error
-#     text = ZERO_WIDTH.sub("", text)
-#     text = MULTI_SPACE.sub(" ", text)
-#     text = MULTI_NEWLINE.sub("\n\n", text)
-#     return text.strip()
-
-# def extract_plain_text(pdf_path: str) -> str:
-#     import fitz
-#     pdf_path = Path(pdf_path)
-#     doc = fitz.open(pdf_path)
-#     parts = []
-#     for page in doc:
-#         parts.append(page.get_text("text"))
-#     return "\n".join(parts)
 
 # Remove ASCII control chars except \n \r \t
 DISALLOWED_ASCII_CONTROLS = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
@@ -229,10 +196,6 @@ def load_documents(path: str | Path) -> list[Document]:
 def count_control_chars(s: str) -> int:
     return len(re.findall(r"[\x00-\x1F\x7F]", s or ""))
 
-
-# DISALLOWED_ASCII_CONTROLS = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
-# ALLOWED = {"\n", "\r", "\t"}
-
 def count_disallowed_ascii_controls(s: str) -> int:
     return len(DISALLOWED_ASCII_CONTROLS.findall(s or ""))
 
@@ -244,33 +207,6 @@ def count_unicode_controls(s: str) -> int:
         if unicodedata.category(ch).startswith("C"):
             n += 1
     return n
-
-
-# def strip_unicode_controls(s: str) -> str:
-#     out = []
-#     for ch in (s or ""):
-#         if ch in ALLOWED:
-#             out.append(ch)
-#             continue
-#         cat = unicodedata.category(ch)
-#         # Remove all "Other" categories:
-#         # Cc control, Cf format, Cs surrogate, Co private use, Cn unassigned
-#         if cat.startswith("C"):
-#             continue
-#         out.append(ch)
-#     return "".join(out)
-
-# def clean_extracted_text_strict(text: str) -> str:
-#     if not text:
-#         return ""
-#     text = unicodedata.normalize("NFKC", text)
-#     text = text.replace("\r\n", "\n").replace("\r", "\n")
-#     text = DISALLOWED_ASCII_CONTROLS.sub("", text)  # already working for you
-#     text = strip_unicode_controls(text)             # ✅ removes Cf/Cc/etc.
-#     # optional whitespace normalization
-#     text = re.sub(r"[ \t]{2,}", " ", text)
-#     text = re.sub(r"\n{3,}", "\n\n", text)
-#     return text.strip()
 
 
 if __name__ == "__main__":
@@ -286,10 +222,10 @@ if __name__ == "__main__":
             "data/kb/network-bruteforce-ir-playbook.pdf",
         ],
     )
-    output_path = "data/playbooks4.json"
+    output_path = "data/playbooks_latest.json"
     save_documents(docs, output_path)
     print(f"Saved {len(docs)} documents to {output_path}")
 
-    docs = load_documents("data/playbooks4.json")
+    docs = load_documents("data/playbooks_latest.json")
     for doc in docs:
         print(count_control_chars(doc.page_content))

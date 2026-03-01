@@ -36,7 +36,7 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 print(f"Loading .env file from {ROOT_DIR / '.env'}")
-did_load = load_dotenv(ROOT_DIR / ".env", override=True)
+load_dotenv(ROOT_DIR / ".env", override=True)
 
 
 class Message(BaseModel):
