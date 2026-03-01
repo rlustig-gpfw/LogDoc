@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { ShieldCheck, Trash2, Database, Globe, ChevronRight } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -31,19 +31,15 @@ function StatusBar({ status }: { status: string }) {
 
 export default function ChatInterface() {
   const { messages, isLoading, status, sendMessage, clearMessages } = useChat()
-  const [prefillValue, setPrefillValue] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom on new messages or streaming content
+  // Auto-scroll to bottom on new messages or streaming content (scroll viewport directly so we don't steal focus from the input)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const viewport = scrollViewportRef.current
+    if (viewport) viewport.scrollTop = viewport.scrollHeight
   }, [messages, status])
 
   const handlePromptSelect = (prompt: string) => {
-    setPrefillValue(prompt)
-    // Reset after a tick so the input can read it
-    setTimeout(() => setPrefillValue(''), 50)
     sendMessage(prompt)
   }
 
@@ -118,7 +114,7 @@ export default function ChatInterface() {
                 <StatusBar status={status} />
               )}
 
-              <div ref={bottomRef} className="h-1" />
+              <div className="h-1" aria-hidden />
             </div>
           </ScrollArea>
         )}
@@ -134,7 +130,6 @@ export default function ChatInterface() {
         <ChatInput
           onSend={sendMessage}
           isLoading={isLoading}
-          key={prefillValue}
         />
       </div>
     </div>

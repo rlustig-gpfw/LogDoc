@@ -50,7 +50,7 @@ export default function WelcomeScreen({ onPromptSelect }: WelcomeScreenProps) {
         LogDoc
       </h1>
       <p className="text-sm text-slate-400 mb-8 max-w-xs">
-        Agentic SOC triage for Zeek network telemetry. Ask about incidents,
+        Agentic SOC triage for network telemetry. Ask about incidents,
         paste logs, or request playbooks.
       </p>
 

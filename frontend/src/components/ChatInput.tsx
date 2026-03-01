@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, KeyboardEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { SendHorizonal, Loader2 } from 'lucide-react'
@@ -12,6 +12,15 @@ interface ChatInputProps {
 export default function ChatInput({ onSend, isLoading, disabled }: ChatInputProps) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const wasLoadingRef = useRef(false)
+
+  // When the LLM finishes (isLoading goes true → false), refocus the textarea so the user can type without clicking back in
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading) {
+      setTimeout(() => textareaRef.current?.focus(), 0)
+    }
+    wasLoadingRef.current = isLoading
+  }, [isLoading])
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim()
@@ -21,6 +30,8 @@ export default function ChatInput({ onSend, isLoading, disabled }: ChatInputProp
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
+    // Refocus the textarea after send (after React commits and layout) so the user can type again without clicking
+    setTimeout(() => textareaRef.current?.focus(), 0)
   }, [value, isLoading, onSend])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
