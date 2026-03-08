@@ -23,8 +23,11 @@ class OpenAIModels:
 
     # Main triage agent
     agent: str = "gpt-4.1"
+    # Specialist model
+    specialist: str = "gpt-4.1-mini"
     # RAG retrieval - need a more powerful model to retrieve the relevant documents
     rag: str = "gpt-4.1-mini"
+    
     # Synthetic data generation
     sdg: str = "gpt-4.1-mini"
     # Ragas evaluation - need a more powerful model     
@@ -41,6 +44,7 @@ class Config:
         self._embedding_model = OpenAIEmbeddings(model="text-embedding-3-small")
 
         self._agent_model = None
+        self._specialist_model = None
         self._rag_model = None
         self._sdg_model = None
         self._evaluator_model = None
@@ -52,6 +56,11 @@ class Config:
         if self._agent_model is None:
             self._agent_model = ChatOpenAI(model=OpenAIModels.agent)
         return self._agent_model
+
+    def get_specialist_model(self) -> ChatOpenAI:
+        if self._specialist_model is None:
+            self._specialist_model = ChatOpenAI(model=OpenAIModels.specialist)
+        return self._specialist_model
 
     def get_sdg_model(self) -> ChatOpenAI:
         if self._sdg_model is None:

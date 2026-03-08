@@ -32,6 +32,14 @@ TOOL_STATUS_MAP = {
     "search_web": "Searching the web...",
 }
 
+# Multi-agent node names → status text for dashboard
+NODE_STATUS_MAP = {
+    "log_triage_specialist": "Analyzing logs...",
+    "playbook_specialist": "Searching playbooks...",
+    "response_builder": "Building response...",
+    "chat_only": "Answering...",
+}
+
 from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -91,6 +99,11 @@ async def chat_endpoint(request: ChatRequest):
                     tool_name = event.get("name", "")
                     status = TOOL_STATUS_MAP.get(tool_name, f"Using {tool_name}...")
                     yield f"data: {json.dumps({'type': 'status', 'content': status})}\n\n"
+
+                elif kind == "on_chain_start":
+                    name = event.get("name", "")
+                    if name in NODE_STATUS_MAP:
+                        yield f"data: {json.dumps({'type': 'status', 'content': NODE_STATUS_MAP[name]})}\n\n"
 
                 elif kind == "on_tool_end":
                     yield f"data: {json.dumps({'type': 'status', 'content': ''})}\n\n"
