@@ -70,13 +70,21 @@ function parseAnalysis(text: string, incidentId: string): Analysis {
     'Medium'
 
   const rationale =
-    extract(/rationale[:\s]*\n?([\s\S]*?)(?=\n\n|\nrecommended|\nactions|\nplaybook|$)/i) ||
+    extract(/rationale[:\s]*\n?([\s\S]*?)(?=\n\n|\nrecommended|\nactions|$)/i) ||
     extract(/analysis[:\s]*\n?([\s\S]*?)(?=\n\n|$)/i) ||
     text.slice(0, 300)
 
   const actions = extractList(
     /recommended actions?[:\s]*\n([\s\S]*?)(?=\n\n|\nplaybook|$)/i
   )
+
+  // Extract Playbook Context section from response_builder format: "Playbook Context: {content}"
+  const playbookContextMatch = text.match(
+    /Playbook Context: [^\n]*/i
+  )
+  const playbook_context = playbookContextMatch
+    ? playbookContextMatch[1].trim()
+    : undefined
 
   return {
     incident_id: incidentId,
@@ -86,6 +94,7 @@ function parseAnalysis(text: string, incidentId: string): Analysis {
     rationale: rationale.replace(/\*+/g, '').trim(),
     recommended_actions: actions,
     playbook_sources: [],
+    playbook_context: playbook_context || undefined,
     raw_response: text,
   }
 }
@@ -136,7 +145,8 @@ Rationale: [brief evidence-based explanation]
 Recommended Actions:
 - [action 1]
 - [action 2]
-- [action 3]`
+- [action 3]
+Playbook Context: [playbook context]`
 
     const assistantId = `assistant-analyze-${Date.now()}`
     let fullContent = ''
@@ -174,11 +184,14 @@ Recommended Actions:
             if (data.type === 'token') {
               fullContent += data.content
             } else if (data.type === 'status') {
+              console.log('status', data.content)
               setAnalyzeStatus(data.content)
             } else if (data.type === 'done') {
               setAnalyzeStatus('')
               setIsAnalyzing(false)
+              console.log('fullContent', fullContent)
               const parsed = parseAnalysis(fullContent, alert.id)
+              console.log('parsed', parsed)
               setAnalysis(parsed)
               setAnalyzedAlertId(alert.id)
               onAnalysisComplete?.(parsed)

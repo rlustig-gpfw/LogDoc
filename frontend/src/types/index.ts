@@ -38,6 +38,8 @@ export interface Analysis {
   rationale: string
   recommended_actions: string[]
   playbook_sources: PlaybookSource[]
+  /** Playbook context text from the response builder (e.g. after "## Playbook Context") */
+  playbook_context?: string
   raw_response: string
 }
 
