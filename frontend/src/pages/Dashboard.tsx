@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Alert } from '@/types'
+import { Alert, Message } from '@/types'
 import AlertFeed from '@/components/AlertFeed'
 import IncidentWorkspace from '@/components/IncidentWorkspace'
 import CopilotChat from '@/components/CopilotChat'
@@ -12,6 +12,19 @@ export default function Dashboard() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [severityFilter, setSeverityFilter] = useState('all')
   const [isDemoStreaming, setIsDemoStreaming] = useState(false)
+  const [analysisConversation, setAnalysisConversation] = useState<Message[] | null>(null)
+  const [analysisConversationId, setAnalysisConversationId] = useState<string | null>(null)
+
+  const handleAnalysisComplete = useCallback((_analysis: unknown, conversation: Message[]) => {
+    setAnalysisConversation(conversation)
+    setAnalysisConversationId(`analysis-${Date.now()}`)
+  }, [])
+
+  const handleSelectAlert = useCallback((alert: Alert | null) => {
+    setSelectedAlert(alert)
+    setAnalysisConversation(null)
+    setAnalysisConversationId(null)
+  }, [])
 
   const openAlerts = alerts.filter((a) => a.status === 'new').length
   const highSeverity = alerts.filter((a) => a.severity === 'high').length
@@ -89,7 +102,7 @@ export default function Dashboard() {
           <AlertFeed
             alerts={alerts}
             selectedAlertId={selectedAlert?.id ?? null}
-            onSelectAlert={setSelectedAlert}
+            onSelectAlert={handleSelectAlert}
             onStartDemoStream={handleStartDemoStream}
             isDemoStreaming={isDemoStreaming}
             severityFilter={severityFilter}
@@ -99,12 +112,16 @@ export default function Dashboard() {
 
         {/* Center — Incident Workspace (50%) */}
         <div className="flex-1 overflow-hidden border-l border-slate-800/80">
-          <IncidentWorkspace alert={selectedAlert} />
+          <IncidentWorkspace alert={selectedAlert} onAnalysisComplete={handleAnalysisComplete} />
         </div>
 
         {/* Right — AI Copilot Chat (28%) */}
         <div className="w-[28%] min-w-[240px] max-w-[360px] flex-shrink-0 overflow-hidden">
-          <CopilotChat alert={selectedAlert} />
+          <CopilotChat
+            alert={selectedAlert}
+            initialMessages={analysisConversation}
+            conversationId={analysisConversationId}
+          />
         </div>
       </div>
     </div>

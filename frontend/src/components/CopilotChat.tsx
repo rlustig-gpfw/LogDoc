@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, KeyboardEvent } from 'react'
-import { Alert } from '@/types'
+import { Alert, Message } from '@/types'
 import { useIncidentChat } from '@/hooks/useIncidentChat'
 import MessageBubble from '@/components/MessageBubble'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,6 +17,10 @@ import {
 
 interface CopilotChatProps {
   alert: Alert | null
+  /** Message history from the analysis (user prompt + assistant response). Chat uses this as context; no extra data is sent. */
+  initialMessages?: Message[] | null
+  /** When this changes, the chat resets to initialMessages. */
+  conversationId?: string | null
 }
 
 const QUICK_PROMPTS = [
@@ -39,8 +43,15 @@ function StatusPill({ status }: { status: string }) {
   )
 }
 
-export default function CopilotChat({ alert }: CopilotChatProps) {
-  const { messages, isLoading, status, sendMessage, clearMessages } = useIncidentChat(alert)
+export default function CopilotChat({
+  alert,
+  initialMessages = null,
+  conversationId = null,
+}: CopilotChatProps) {
+  const { messages, isLoading, status, sendMessage, clearMessages } = useIncidentChat({
+    initialMessages,
+    conversationId,
+  })
   const [value, setValue] = useState('')
   const scrollViewportRef = useRef<HTMLDivElement>(null)
 

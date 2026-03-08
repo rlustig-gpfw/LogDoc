@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Alert, Analysis } from '@/types'
+import { Alert, Analysis, Message } from '@/types'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import RawLogViewer from '@/components/RawLogViewer'
 import TriageSummary from '@/components/TriageSummary'
@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils'
 
 interface IncidentWorkspaceProps {
   alert: Alert | null
-  onAnalysisComplete?: (analysis: Analysis) => void
+  /** Called when analysis finishes. Passes parsed analysis and the conversation (user prompt + assistant response) for the chat to use as history. */
+  onAnalysisComplete?: (analysis: Analysis, conversation: Message[]) => void
 }
 
 const SEVERITY_CONFIG = {
@@ -37,19 +38,44 @@ const STATUS_BADGE = {
   resolved: 'bg-slate-500/15 text-slate-400 border-slate-500/25',
 }
 
+/** Parse a single playbook section from the agent response (context + sources). */
+function parsePlaybookSection(text: string): {
+  playbook_context: string | undefined
+  playbook_sources: { title: string; source: string; excerpt: string; relevance: string }[]
+} {
+  const playbookContextMatch = text.match(
+    /##\s*Playbook\s*Context\s*\n+([\s\S]*?)(?=\n##\s|$)/i
+  )
+  const playbook_context = playbookContextMatch
+    ? playbookContextMatch[1].trim().replace(/\*+/g, '') || undefined
+    : undefined
+
+  const playbookSourcesMatch = text.match(
+    /##\s*Playbook\s*Sources\s*\n+([\s\S]*?)(?=\n##\s|$)/i
+  )
+  const sourcesLines = playbookSourcesMatch
+    ? playbookSourcesMatch[1]
+        .split('\n')
+        .map((l) => l.replace(/^[-*•\d.)\s]+/, '').trim())
+        .filter((l) => l && l !== '(no sources)')
+    : []
+  const playbook_sources = sourcesLines.map((source) => {
+    const name = source.split(/[/\\]/).pop() || source
+    return {
+      title: name,
+      source,
+      excerpt: '',
+      relevance: 'Retrieved for this incident',
+    }
+  })
+
+  return { playbook_context, playbook_sources }
+}
+
 function parseAnalysis(text: string, incidentId: string): Analysis {
   const extract = (pattern: RegExp, fallback = '') => {
     const m = text.match(pattern)
     return m ? m[1].trim() : fallback
-  }
-
-  const extractList = (pattern: RegExp): string[] => {
-    const m = text.match(pattern)
-    if (!m) return []
-    return m[1]
-      .split('\n')
-      .map((l) => l.replace(/^[-*•\d.)\s]+/, '').trim())
-      .filter(Boolean)
   }
 
   const classification =
@@ -70,21 +96,11 @@ function parseAnalysis(text: string, incidentId: string): Analysis {
     'Medium'
 
   const rationale =
-    extract(/rationale[:\s]*\n?([\s\S]*?)(?=\n\n|\nrecommended|\nactions|$)/i) ||
+    extract(/rationale[:\s]*\n?([\s\S]*?)(?=\n\n|\n##\s|$)/i) ||
     extract(/analysis[:\s]*\n?([\s\S]*?)(?=\n\n|$)/i) ||
     text.slice(0, 300)
 
-  const actions = extractList(
-    /recommended actions?[:\s]*\n([\s\S]*?)(?=\n\n|\nplaybook|$)/i
-  )
-
-  // Extract Playbook Context section from response_builder format: "Playbook Context: {content}"
-  const playbookContextMatch = text.match(
-    /Playbook Context: [^\n]*/i
-  )
-  const playbook_context = playbookContextMatch
-    ? playbookContextMatch[1].trim()
-    : undefined
+  const { playbook_context, playbook_sources } = parsePlaybookSection(text)
 
   return {
     incident_id: incidentId,
@@ -92,9 +108,9 @@ function parseAnalysis(text: string, incidentId: string): Analysis {
     mitre_technique: mitre,
     confidence: confidence.replace(/\*+/g, '').trim(),
     rationale: rationale.replace(/\*+/g, '').trim(),
-    recommended_actions: actions,
-    playbook_sources: [],
-    playbook_context: playbook_context || undefined,
+    recommended_actions: [],
+    playbook_sources,
+    playbook_context,
     raw_response: text,
   }
 }
@@ -184,17 +200,28 @@ Playbook Context: [playbook context]`
             if (data.type === 'token') {
               fullContent += data.content
             } else if (data.type === 'status') {
-              console.log('status', data.content)
               setAnalyzeStatus(data.content)
             } else if (data.type === 'done') {
               setAnalyzeStatus('')
               setIsAnalyzing(false)
-              console.log('fullContent', fullContent)
               const parsed = parseAnalysis(fullContent, alert.id)
-              console.log('parsed', parsed)
               setAnalysis(parsed)
               setAnalyzedAlertId(alert.id)
-              onAnalysisComplete?.(parsed)
+              const conversation: Message[] = [
+                {
+                  id: `user-analyze-${alert.id}-${Date.now()}`,
+                  role: 'user',
+                  content: prompt,
+                  timestamp: new Date(),
+                },
+                {
+                  id: `assistant-analyze-${alert.id}-${Date.now()}`,
+                  role: 'assistant',
+                  content: fullContent,
+                  timestamp: new Date(),
+                },
+              ]
+              onAnalysisComplete?.(parsed, conversation)
             } else if (data.type === 'error') {
               setAnalyzeStatus('')
               setIsAnalyzing(false)

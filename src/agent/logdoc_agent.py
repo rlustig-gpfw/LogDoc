@@ -9,6 +9,7 @@ Multi-agent SOC triage system built with LangGraph.
 - Chat-only: Supervisor routes here for follow-ups; LLM responds from analysis history without calling specialists.
 """
 
+import re
 from typing import Annotated, Optional, TypedDict
 
 from langchain.agents import create_agent
@@ -60,7 +61,9 @@ If the content is not log data or is insufficient, use classification "Insuffici
 
 PLAYBOOK_SYSTEM = """You are a playbook specialist. Based on the log triage analysis already in the conversation (classification, MITRE technique, rationale), search the knowledge base for the most relevant playbook(s) and incident response procedures.
 
-Summarize the playbook guidance and recommended actions that apply to this incident. Do not re-analyze the logs; use the triage specialist's output as context. Focus on actionable steps and runbook content. Provide the playbook sources in the format: [Source: Playbook Name]"""
+Summarize the playbook guidance and recommended actions that apply to this incident. Do not re-analyze the logs; use the triage specialist's output as context. Focus on actionable steps and runbook content.
+
+When you use the search_playbooks_knowledge_base tool, include the full tool response in your answer so that the SOURCES section (exact files used for retrieval) is preserved for the dashboard."""
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +76,7 @@ SUPERVISOR_SYSTEM = """You are the SOC Supervisor. You coordinate a team of spec
 - If the latest user message contains logs or telemetry to analyze (or a request to analyze/triage logs), route to the log_triage specialist.
 - After the log triage specialist has responded, review that response. If playbook/runbook guidance would help for this incident, route to the playbook specialist. If the triage was "Insufficient data" or clearly benign and no playbook is needed, you may route to response_builder.
 - After the playbook specialist has responded (or you skipped playbook), route to response_builder to produce the final triage summary and playbook context for the dashboard.
-- If the user is asking a follow-up question about a prior analysis (e.g. "why did you say that?", "what should I do first?"), do NOT call the specialist agents. Route to chat_only so the assistant answers from the conversation history only.
+- If the user is asking a follow-up question about a prior analysis (e.g. "summarize the analysis", "recommendations", "why did you say that?", "what should I do first?"), do NOT call the specialist agents. Route to chat_only so the assistant answers from the conversation history only.
 - If there is nothing left to do or the conversation is done, respond with "end".
 
 **Output format:** Reply with exactly one line containing only one of these words: log_triage, playbook, response_builder, chat_only, end."""
@@ -140,7 +143,8 @@ def _build_log_triage_agent():
     llm = config.get_specialist_model()
     return create_agent(
         model=llm,
-        tools=[get_current_date, search_playbooks_knowledge_base, search_web],
+        #tools=[get_current_date, search_playbooks_knowledge_base, search_web],
+        tools=[get_current_date, search_web],
         system_prompt=LOG_TRIAGE_SYSTEM,
     )
 
@@ -173,13 +177,46 @@ def _extract_specialist_content(messages: list, tag: str) -> str:
     return ""
 
 
+def _split_playbook_guidance_and_sources(playbook_content: str) -> tuple[str, list[str]]:
+    """Split playbook specialist output into guidance text and list of source files."""
+    if not playbook_content or not playbook_content.strip():
+        return "N/A", []
+    text = playbook_content.strip()
+    # Tool appends "SOURCES:\n- path1\n- path2"; agent may wrap or rephrase
+    sources: list[str] = []
+    if "SOURCES:" in text.upper():
+        parts = re.split(r"\n\s*SOURCES\s*:\s*\n", text, maxsplit=1, flags=re.IGNORECASE)
+        guidance = (parts[0].strip() if parts else text).strip() or "N/A"
+        if len(parts) > 1:
+            for line in parts[1].strip().splitlines():
+                line = line.strip()
+                if line.startswith("-"):
+                    line = line.lstrip("-").strip()
+                if line and line != "(no sources)":
+                    sources.append(line)
+    else:
+        guidance = text
+        # Fallback: look for any "Sources used:" or bullet list of paths
+        for line in text.splitlines():
+            line = line.strip().lstrip("-*•").strip()
+            if line and (line.endswith(".json") or line.endswith(".pdf") or "/" in line or "\\" in line):
+                sources.append(line)
+    return guidance or "N/A", sources
+
+
 def _response_builder_node(state: SupervisorState) -> dict:
-    """Build triage summary and playbook context for dashboard from specialist messages."""
+    """Build triage summary and playbook (context + explicit sources) for dashboard."""
     messages = state.get("messages") or []
     triage_content = _extract_specialist_content(messages, "log_triage")
-    playbook_content = _extract_specialist_content(messages, "playbook")
+    playbook_raw = _extract_specialist_content(messages, "playbook")
+    playbook_guidance, playbook_sources = _split_playbook_guidance_and_sources(playbook_raw)
 
-    summary = f"## Triage Summary\n\n{triage_content or 'N/A'}\n\n## Playbook Context\n\n{playbook_content or 'N/A'}"
+    sources_block = "\n".join(f"- {s}" for s in playbook_sources) if playbook_sources else "- (no sources)"
+    summary = (
+        f"## Triage Summary\n\n{triage_content or 'N/A'}\n\n"
+        f"## Playbook Context\n\n{playbook_guidance}\n\n"
+        f"## Playbook Sources\n\n{sources_block}"
+    )
     return {"messages": [AIMessage(content=summary)]}
 
 

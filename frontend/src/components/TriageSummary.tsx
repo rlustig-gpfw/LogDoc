@@ -1,5 +1,5 @@
 import { Analysis } from '@/types'
-import { Target, Brain, Zap, CheckSquare, Loader2 } from 'lucide-react'
+import { Target, Brain, Zap, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TriageSummaryProps {
@@ -93,21 +93,6 @@ export default function TriageSummary({ analysis, isLoading }: TriageSummaryProp
         </div>
         <p className="text-xs text-slate-300 leading-relaxed">{analysis.rationale}</p>
       </div>
-
-      {analysis.recommended_actions.length > 0 && (
-        <FieldCard icon={CheckSquare} label="Recommended Actions">
-          <ul className="space-y-1">
-            {analysis.recommended_actions.map((action, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="shrink-0 inline-flex items-center justify-center h-4 w-4 rounded-full bg-blue-600/20 text-[9px] text-blue-400 font-mono mt-0.5">
-                  {i + 1}
-                </span>
-                <span className="text-xs text-slate-300 leading-relaxed">{action}</span>
-              </li>
-            ))}
-          </ul>
-        </FieldCard>
-      )}
     </div>
   )
 }
