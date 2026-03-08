@@ -21,6 +21,17 @@ def get_current_date() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d (%B %d, %Y)")
 
 
+def _source_id(doc) -> str:
+    """Get a display name for the document source (file path or identifier)."""
+    if hasattr(doc, "metadata") and doc.metadata:
+        return (
+            doc.metadata.get("source")
+            or doc.metadata.get("file_path")
+            or doc.metadata.get("title")
+        ) or "unknown"
+    return "unknown"
+
+
 @tool
 def search_playbooks_knowledge_base(query: str) -> str:
     """
@@ -34,9 +45,15 @@ def search_playbooks_knowledge_base(query: str) -> str:
     For current events, latest trends, or topics not well covered in playbooks, also use search_web (and get_current_date if the query is time-sensitive).
     """
     retriever = get_naive_retriever_chain()
+    print(f"playbooks query: {query}")
     result = retriever.invoke(query)
-    print(f"search_playbooks_knowledge_base result: {result}")
-    return result["response"]
+    response_text = result.get("response") or ""
+    docs = result.get("context") or []
+    sources = list(dict.fromkeys(_source_id(d) for d in docs))  # unique, order preserved
+    sources_block = "\n".join(f"- {s}" for s in sources) if sources else "- (no sources)"
+    out = f"{response_text}\n\nSOURCES:\n{sources_block}"
+    # print(f"search_playbooks_knowledge_base result length={len(response_text)}, sources={len(sources)}")
+    return out
     
 
 @tool
