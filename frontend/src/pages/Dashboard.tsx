@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Alert, Message } from '@/types'
+import { Alert, Analysis } from '@/types'
 import AlertFeed from '@/components/AlertFeed'
 import IncidentWorkspace from '@/components/IncidentWorkspace'
 import CopilotChat from '@/components/CopilotChat'
@@ -12,17 +12,17 @@ export default function Dashboard() {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null)
   const [severityFilter, setSeverityFilter] = useState('all')
   const [isDemoStreaming, setIsDemoStreaming] = useState(false)
-  const [analysisConversation, setAnalysisConversation] = useState<Message[] | null>(null)
+  const [currentAnalysis, setCurrentAnalysis] = useState<Analysis | null>(null)
   const [analysisConversationId, setAnalysisConversationId] = useState<string | null>(null)
 
-  const handleAnalysisComplete = useCallback((_analysis: unknown, conversation: Message[]) => {
-    setAnalysisConversation(conversation)
+  const handleAnalysisComplete = useCallback((analysis: Analysis) => {
+    setCurrentAnalysis(analysis)
     setAnalysisConversationId(`analysis-${Date.now()}`)
   }, [])
 
   const handleSelectAlert = useCallback((alert: Alert | null) => {
     setSelectedAlert(alert)
-    setAnalysisConversation(null)
+    setCurrentAnalysis(null)
     setAnalysisConversationId(null)
   }, [])
 
@@ -119,7 +119,7 @@ export default function Dashboard() {
         <div className="w-[28%] min-w-[240px] max-w-[360px] flex-shrink-0 overflow-hidden">
           <CopilotChat
             alert={selectedAlert}
-            initialMessages={analysisConversation}
+            analysis={currentAnalysis}
             conversationId={analysisConversationId}
           />
         </div>

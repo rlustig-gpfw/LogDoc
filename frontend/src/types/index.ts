@@ -24,22 +24,36 @@ export interface Alert {
 }
 
 export interface PlaybookSource {
-  title: string
-  source: string
-  excerpt: string
-  relevance: string
+  file: string
 }
 
-export interface Analysis {
-  incident_id: string
+export interface PlaybookResult {
+  playbook_name: string
+  match_reason: string
+  recommended_actions: string[]
+  sources: PlaybookSource[]
+}
+
+export interface TriageResult {
   classification: string
   mitre_technique: string
   confidence: string
   rationale: string
-  recommended_actions: string[]
-  playbook_sources: PlaybookSource[]
-  /** Playbook context text from the response builder (e.g. after "## Playbook Context") */
-  playbook_context?: string
+}
+
+export interface Analysis {
+  incident_id: string
+  /** Structured triage output from the log_triage node */
+  triage_result: TriageResult | null
+  /** Structured playbook output from the playbook_retrieval node */
+  playbook_result: PlaybookResult | null
+  /** Intent the router identified for this turn */
+  intent: string | null
+  /** Route the router planned */
+  route_plan: string[] | null
+  /** Final natural-language response from response_composer */
+  final_response: string
+  /** Raw full streamed text (for display / debugging) */
   raw_response: string
 }
 

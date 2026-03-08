@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, KeyboardEvent } from 'react'
-import { Alert, Message } from '@/types'
+import { Alert, Analysis } from '@/types'
 import { useIncidentChat } from '@/hooks/useIncidentChat'
 import MessageBubble from '@/components/MessageBubble'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -17,9 +17,9 @@ import {
 
 interface CopilotChatProps {
   alert: Alert | null
-  /** Message history from the analysis (user prompt + assistant response). Chat uses this as context; no extra data is sent. */
-  initialMessages?: Message[] | null
-  /** When this changes, the chat resets to initialMessages. */
+  /** Structured analysis result for the selected case. Passed as context to the chat API. */
+  analysis?: Analysis | null
+  /** When this changes (new analysis run), the chat resets. */
   conversationId?: string | null
 }
 
@@ -45,11 +45,12 @@ function StatusPill({ status }: { status: string }) {
 
 export default function CopilotChat({
   alert,
-  initialMessages = null,
+  analysis = null,
   conversationId = null,
 }: CopilotChatProps) {
   const { messages, isLoading, status, sendMessage, clearMessages } = useIncidentChat({
-    initialMessages,
+    alert,
+    analysis,
     conversationId,
   })
   const [value, setValue] = useState('')

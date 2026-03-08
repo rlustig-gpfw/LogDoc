@@ -9,8 +9,10 @@ interface TriageSummaryProps {
 
 const CONFIDENCE_CONFIG = {
   high: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/25',
+  med: 'text-amber-400 bg-amber-500/15 border-amber-500/25',
   medium: 'text-amber-400 bg-amber-500/15 border-amber-500/25',
   low: 'text-red-400 bg-red-500/15 border-red-500/25',
+  none: 'text-slate-400 bg-slate-500/15 border-slate-500/25',
 }
 
 function FieldCard({
@@ -47,7 +49,7 @@ export default function TriageSummary({ analysis, isLoading }: TriageSummaryProp
     )
   }
 
-  if (!analysis) {
+  if (!analysis || !analysis.triage_result) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center px-4">
         <Brain size={20} className="text-slate-700 mb-2" />
@@ -59,18 +61,19 @@ export default function TriageSummary({ analysis, isLoading }: TriageSummaryProp
     )
   }
 
-  const confidenceKey = analysis.confidence.toLowerCase() as keyof typeof CONFIDENCE_CONFIG
+  const triage = analysis.triage_result
+  const confidenceKey = triage.confidence.toLowerCase() as keyof typeof CONFIDENCE_CONFIG
   const confidenceStyle = CONFIDENCE_CONFIG[confidenceKey] ?? CONFIDENCE_CONFIG.medium
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <FieldCard icon={Target} label="Classification">
-          <p className="text-sm font-semibold text-slate-200">{analysis.classification}</p>
+          <p className="text-sm font-semibold text-slate-200">{triage.classification}</p>
         </FieldCard>
 
         <FieldCard icon={Zap} label="MITRE ATT&CK">
-          <p className="text-sm font-semibold text-slate-200">{analysis.mitre_technique}</p>
+          <p className="text-sm font-semibold text-slate-200">{triage.mitre_technique}</p>
         </FieldCard>
       </div>
 
@@ -88,10 +91,10 @@ export default function TriageSummary({ analysis, isLoading }: TriageSummaryProp
               confidenceStyle
             )}
           >
-            {analysis.confidence}
+            {triage.confidence}
           </span>
         </div>
-        <p className="text-xs text-slate-300 leading-relaxed">{analysis.rationale}</p>
+        <p className="text-xs text-slate-300 leading-relaxed">{triage.rationale}</p>
       </div>
     </div>
   )
